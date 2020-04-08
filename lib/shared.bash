@@ -175,9 +175,7 @@ function build_image_override_file_with_version() {
 function run_docker_compose() {
   local command=(docker-compose)
 
-  if [[ "$(plugin_read_config VERBOSE "false")" == "true" ]] ; then
-    command+=(--verbose)
-  fi
+  command+=(--verbose)
 
   if [[ "$(plugin_read_config  USE_COMPATIBILITY_MODE "false")" == "true" ]] ; then
     command+=(--compatibility)
