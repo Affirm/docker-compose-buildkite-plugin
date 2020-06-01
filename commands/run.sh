@@ -296,7 +296,7 @@ if [[ -n "${BUILDKITE_AGENT_ACCESS_TOKEN:-}" ]] ; then
 
     check_linked_containers_and_save_logs \
       "$run_service" "docker-compose-logs" \
-      "$(plugin_read_config UPLOAD_CONTAINER_LOGS "on-error")"
+      "$(plugin_read_config UPLOAD_CONTAINER_LOGS "always")"
 
     if [[ -d "docker-compose-logs" ]] && test -n "$(find docker-compose-logs/ -maxdepth 1 -name '*.log' -print)"; then
       echo "~~~ Uploading linked container logs"
