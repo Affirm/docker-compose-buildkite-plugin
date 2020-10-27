@@ -55,6 +55,12 @@ check_linked_containers_and_save_logs() {
 
     service_exit_code="$(docker inspect --format='{{.State.ExitCode}}' "$service_container_id")"
 
+    # Buildkite's private S3 Bucket feature doesn't support artifacts with the same name in multiple steps.
+    # https://jira.team.affirm.com/browse/DEVTOOLS-644
+    if [[ "$BUILDKITE_STEP_KEY" != "" ]]; then
+      service_name="$BUILDKITE_STEP_KEY-$service_name"
+    fi
+
     # Capture logs if the linked container failed
     if [[ "$service_exit_code" -ne 0 ]] ; then
       echo "+++ :warning: Linked service $service_name exited with $service_exit_code"
