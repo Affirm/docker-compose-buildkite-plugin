@@ -78,6 +78,8 @@ configuration:
       type: boolean
     entrypoint:
       type: string
+    use-compatibility-mode:
+      type: boolean
   oneOf:
     - required:
       - run
