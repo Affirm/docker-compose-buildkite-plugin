@@ -1,6 +1,9 @@
 #!/bin/bash
 set -ueo pipefail
 
+set -m
+trap 'kill %% ; wait;' TERM
+
 # Run takes a service name, pulls down any pre-built image for that name
 # and then runs docker-compose run a generated project name
 
@@ -332,19 +335,11 @@ elif [[ ${#command[@]} -gt 0 ]] ; then
   done
 fi
 
-# Disable -e outside of the subshell; since the subshell returning a failure
-# would exit the parent shell (here) early.
-set +e
-
-(
-  echo "+++ :docker: Running ${display_command[*]:-} in service $run_service" >&2
-  run_docker_compose "${run_params[@]}"
-)
-
-exitcode=$?
-
-# Restore -e as an option.
-set -e
+echo "+++ :docker: Running ${display_command[*]:-} in service $run_service" >&2
+# need to be backgrounded for timely signal handling
+run_docker_compose "${run_params[@]}" &
+# allow the compose run command to fail without killing this script, and retrieve the exit code
+wait $! && exitcode=$? || exitcode=$?
 
 if [[ $exitcode -ne 0 ]] ; then
   echo "^^^ +++"
