@@ -1,6 +1,9 @@
 #!/bin/bash
 set -ueo pipefail
 
+set -m
+trap 'echo caught TERM ; kill %% ; wait;' TERM
+
 DIR="$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)"
 
 # shellcheck source=lib/shared.bash

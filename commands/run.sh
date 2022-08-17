@@ -1,6 +1,9 @@
 #!/bin/bash
 set -ueo pipefail
 
+set -m
+trap 'echo caught TERM ; kill %% ; wait;' TERM
+
 # Run takes a service name, pulls down any pre-built image for that name
 # and then runs docker-compose run a generated project name
 
@@ -106,9 +109,9 @@ if is_windows ; then
 fi
 
 # Optionally disable allocating a TTY
-if [[ "$(plugin_read_config TTY "$tty_default")" == "false" ]] ; then
-  run_params+=(-T)
-fi
+#if [[ "$(plugin_read_config TTY "$tty_default")" == "false" ]] ; then
+run_params+=(-T)
+#fi
 
 # Optionally disable dependencies
 if [[ "$(plugin_read_config DEPENDENCIES "true")" == "false" ]] ; then
@@ -252,19 +255,13 @@ elif [[ ${#command[@]} -gt 0 ]] ; then
   done
 fi
 
-# Disable -e outside of the subshell; since the subshell returning a failure
-# would exit the parent shell (here) early.
-set +e
-
-(
-  echo "+++ :docker: Running ${display_command[*]:-} in service $run_service" >&2
-  run_docker_compose "${run_params[@]}"
-)
-
-exitcode=$?
-
-# Restore -e as an option.
-set -e
+echo "+++ :docker: Running ${display_command[*]:-} in service $run_service" >&2
+# 1. need to be backgrounded for timely signal handling
+# 2. detach from stdin or we'll get SIGTTIN
+# 3. disable TTY alloc or we'll get SIGTTOU
+run_docker_compose "${run_params[@]}" < /dev/null &
+# allow the compose run command to fail without killing this script, and retrieve the exit code
+wait $! && exitcode=$? || exitcode=$?
 
 if [[ $exitcode -ne 0 ]] ; then
   echo "^^^ +++"
