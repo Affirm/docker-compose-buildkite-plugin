@@ -24,59 +24,6 @@ compose_cleanup() {
   fi
 }
 
-# Checks for failed containers and writes logs for them the the provided dir
-check_linked_containers_and_save_logs() {
-  local service="$1"
-  local logdir="$2"
-  local uploadlogs="$3"
-  local uploadall="false"
-
-  if [[ "$uploadlogs" =~ ^(false|off|0|never)$ ]]; then
-    # Skip all if we are not uploading logs
-    return
-  elif [[ "$uploadlogs" =~ ^(true|on|1|always)$ ]]; then
-    uploadall="true"
-  fi
-
-  [[ -d "$logdir" ]] && rm -rf "$logdir"
-  mkdir -p "$logdir"
-
-  # Get list of container if to service labels
-  containers=()
-  while IFS=$'\n' read -r container ; do
-    [[ -n "$container" ]] && containers+=("$container")
-  done < <(docker_ps_by_project --format '{{.ID}}\t{{.Label "com.docker.compose.service"}}')
-
-  # Iterate over containers, handling empty container array as a possibility
-  for line in "${containers[@]+"${containers[@]}"}" ; do
-    # Split tab-delimited tokens into service name and container id
-    service_name="$(cut -d$'\t' -f2 <<<"$line")"
-    service_container_id="$(cut -d$'\t' -f1 <<<"$line")"
-
-    # Skip uploading logs for the primary service container
-    if [[ "$service_name" == "$service" ]] ; then
-      continue
-    fi
-
-    service_exit_code="$(docker inspect --format='{{.State.ExitCode}}' "$service_container_id")"
-
-    # Buildkite's private S3 Bucket feature doesn't support artifacts with the same name in multiple steps.
-    # https://jira.team.affirm.com/browse/DEVTOOLS-644
-    if [[ "$BUILDKITE_STEP_KEY" != "" ]]; then
-      service_name="$BUILDKITE_STEP_KEY-$service_name"
-    fi
-
-    # Capture logs if the linked container failed
-    if [[ "$service_exit_code" -ne 0 ]] ; then
-      echo "+++ :warning: Linked service $service_name exited with $service_exit_code"
-      plugin_prompt_and_run docker logs --timestamps --tail 5 "$service_container_id"
-      docker logs -t "$service_container_id" &>"${logdir}/${service_name}.log"
-    elif $uploadall; then
-      docker logs -t "$service_container_id" &>"${logdir}/${service_name}.log"
-    fi
-  done
-}
-
 # docker-compose's -v arguments don't do local path expansion like the .yml
 # versions do. So we add very simple support, for the common and basic case.
 #

@@ -171,25 +171,30 @@ function build_image_override_file_with_version() {
   done
 }
 
+_COMPOSE_COMMAND=(docker-compose)
+
+if [[ "$(plugin_read_config VERBOSE "false")" == "true" ]] ; then
+  _COMPOSE_COMMAND+=(--verbose)
+fi
+
+if [[ "$(plugin_read_config  USE_COMPATIBILITY_MODE "false")" == "true" ]] ; then
+  _COMPOSE_COMMAND+=(--compatibility)
+fi
+
+for file in $(docker_compose_config_files) ; do
+  _COMPOSE_COMMAND+=(-f "$file")
+done
+
+_COMPOSE_COMMAND+=(-p "$(docker_compose_project_name)")
+ 
 # Runs the docker-compose command, scoped to the project, with the given arguments
 function run_docker_compose() {
-  local command=(docker-compose)
+  plugin_prompt_and_run "${_COMPOSE_COMMAND[@]}" "$@"
+}
 
-  if [[ "$(plugin_read_config VERBOSE "false")" == "true" ]] ; then
-    command+=(--verbose)
-  fi
-
-  if [[ "$(plugin_read_config  USE_COMPATIBILITY_MODE "false")" == "true" ]] ; then
-    command+=(--compatibility)
-  fi
-
-  for file in $(docker_compose_config_files) ; do
-    command+=(-f "$file")
-  done
-
-  command+=(-p "$(docker_compose_project_name)")
-
-  plugin_prompt_and_run "${command[@]}" "$@"
+function exec_docker_compose() {
+  plugin_prompt "${_COMPOSE_COMMAND[@]}" "$@"
+  exec "${_COMPOSE_COMMAND[@]}" "$@"
 }
 
 # Create an image name that is used to tag custom images
